@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { FaMapMarkerAlt, FaEnvelope, FaPhoneAlt, FaGlobe, FaLinkedin, FaMedium, FaGithub, FaTwitter } from 'react-icons/fa';
+import { supabase } from '../lib/supabaseClient';
 
 const Contact = () => {
   const [formData, setFormData] = useState({
@@ -10,20 +11,40 @@ const Contact = () => {
     message: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [status, setStatus] = useState<{ type: 'success' | 'error' | null, message: string }>({ type: null, message: '' });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    // Simulate form submission
-    setTimeout(() => {
-      alert("Message sent! (This is a demo)");
-      setIsSubmitting(false);
+    setStatus({ type: null, message: '' });
+
+    try {
+      const { error } = await supabase
+        .from('messages')
+        .insert([
+          { 
+            name: formData.name, 
+            email: formData.email, 
+            subject: formData.subject, 
+            message: formData.message,
+            created_at: new Date().toISOString()
+          }
+        ]);
+
+      if (error) throw error;
+
+      setStatus({ type: 'success', message: 'Message sent successfully! I will get back to you soon.' });
       setFormData({ name: '', email: '', subject: '', message: '' });
-    }, 2000);
+    } catch (error) {
+      console.error('Error sending message:', error);
+      setStatus({ type: 'error', message: 'Failed to send message. Please try again later or email me directly.' });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -175,6 +196,11 @@ const Contact = () => {
                                 "Send Message"
                             )}
                         </button>
+                        {status.message && (
+                            <div className={`mt-4 p-4 rounded-lg text-center font-medium ${status.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                {status.message}
+                            </div>
+                        )}
                     </form>
                 </div>
             </motion.div>
